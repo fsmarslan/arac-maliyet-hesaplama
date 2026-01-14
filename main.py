@@ -51,6 +51,10 @@ class VehicleBase(BaseModel):
     periyodik_bakim_km: int = 10000
     periyodik_bakim_maliyeti: float = 0.0
     
+    # Servis Takibi (YENİ)
+    son_bakim_km: int = 0
+    bakim_araligi: int = 2000
+    
     # Sabit Giderler
     yillik_sigorta: float = 0.0
     yillik_mtv: float = 0.0
@@ -72,6 +76,15 @@ class ComponentCreate(BaseModel):
     parca_adi: str
     maliyet: float
     omur_km: int
+    degisim_km: Optional[int] = 0
+
+class ServiceLogCreate(BaseModel):
+    vehicle_id: int
+    tarih: str
+    km: int
+    yapilan_islemler: str
+    toplam_maliyet: float = 0.0
+    degisen_parcalar: Optional[str] = None
 
 class SettingsUpdate(BaseModel):
     manual_fuel_price: Optional[float] = None
@@ -141,8 +154,63 @@ def add_component(vehicle_id: int, comp: ComponentCreate):
     # URL'deki ID ile body'deki ID uyuşsun veya override edelim
     if comp.vehicle_id != vehicle_id:
         comp.vehicle_id = vehicle_id
-    manager.add_consumable(comp.vehicle_id, comp.parca_adi, comp.maliyet, comp.omur_km)
+    manager.add_consumable_with_km(comp.vehicle_id, comp.parca_adi, comp.maliyet, comp.omur_km, comp.degisim_km or 0)
     return {"message": "Parça eklendi."}
+
+# --- SERVICE LOGS (SERVİS DEFTERİ) ---
+
+@app.get("/vehicles/{vehicle_id}/service-logs")
+def get_service_logs(vehicle_id: int):
+    """Araca ait servis kayıtlarını getirir."""
+    if not manager.get_vehicle_by_id(vehicle_id):
+        raise HTTPException(status_code=404, detail="Araç bulunamadı.")
+    return manager.get_service_logs(vehicle_id)
+
+@app.post("/vehicles/{vehicle_id}/service-logs", status_code=201)
+def add_service_log(vehicle_id: int, log: ServiceLogCreate):
+    """Yeni servis kaydı ekler."""
+    if not manager.get_vehicle_by_id(vehicle_id):
+        raise HTTPException(status_code=404, detail="Araç bulunamadı.")
+    
+    log_id = manager.add_service_log(
+        vehicle_id=vehicle_id,
+        tarih=log.tarih,
+        km=log.km,
+        yapilan_islemler=log.yapilan_islemler,
+        toplam_maliyet=log.toplam_maliyet,
+        degisen_parcalar=log.degisen_parcalar
+    )
+    
+    if log_id == -1:
+        raise HTTPException(status_code=500, detail="Servis kaydı eklenemedi.")
+    
+    return {"id": log_id, "message": "Servis kaydı eklendi."}
+
+@app.delete("/service-logs/{log_id}")
+def delete_service_log(log_id: int):
+    """Servis kaydını siler."""
+    success = manager.delete_service_log(log_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Servis kaydı silinemedi.")
+    return {"message": "Servis kaydı silindi."}
+
+# --- MAINTENANCE STATUS (BAKIM DURUMU) ---
+
+@app.get("/vehicles/{vehicle_id}/maintenance-status")
+def get_maintenance_status(vehicle_id: int):
+    """Bakım durumu bilgilerini getirir."""
+    if not manager.get_vehicle_by_id(vehicle_id):
+        raise HTTPException(status_code=404, detail="Araç bulunamadı.")
+    return manager.get_maintenance_status(vehicle_id)
+
+# --- CRITICAL WARNINGS (KRİTİK UYARILAR) ---
+
+@app.get("/vehicles/{vehicle_id}/warnings")
+def get_critical_warnings(vehicle_id: int, threshold: int = 500):
+    """Kritik parça ve bakım uyarılarını getirir."""
+    if not manager.get_vehicle_by_id(vehicle_id):
+        raise HTTPException(status_code=404, detail="Araç bulunamadı.")
+    return manager.get_critical_warnings(vehicle_id, threshold)
 
 # --- COST ANALYSIS ---
 
@@ -184,6 +252,9 @@ def get_costs(vehicle_id: int):
         raise HTTPException(status_code=404, detail="Araç bulunamadı.")
     
     result = manager.calculate_total_km_cost(vehicle_id)
+    vehicle = manager.get_vehicle_by_id(vehicle_id)
+    maint_status = manager.get_maintenance_status(vehicle_id)
+    warnings = manager.get_critical_warnings(vehicle_id)
     
     # Frontend'in beklediği format
     return {
@@ -196,8 +267,12 @@ def get_costs(vehicle_id: int):
             "depreciation": result.get("breakdown", {}).get("depreciation_cost", 0),
             "insurance": result.get("breakdown", {}).get("fixed_cost", 0)
         },
-        "fuel_efficiency_l_100km": manager.get_vehicle_by_id(vehicle_id).get("ortalama_tuketim_l_100km", 0),
-        "market_fuel_price_ref": result.get("params", {}).get("fuel_price_used", 0)
+        "consumable_details": result.get("consumable_details", []),
+        "fixed_details": result.get("fixed_details", {}),
+        "fuel_efficiency_l_100km": vehicle.get("ortalama_tuketim_l_100km", 0),
+        "market_fuel_price_ref": result.get("params", {}).get("fuel_price_used", 0),
+        "maintenance_status": maint_status,
+        "warnings": warnings
     }
 
 @app.post("/components")
@@ -205,7 +280,7 @@ def add_component_direct(comp: ComponentCreate):
     """AddComponentForm için parça ekleme endpoint'i."""
     if not manager.get_vehicle_by_id(comp.vehicle_id):
         raise HTTPException(status_code=404, detail="Araç bulunamadı.")
-    manager.add_consumable(comp.vehicle_id, comp.parca_adi, comp.maliyet, comp.omur_km)
+    manager.add_consumable_with_km(comp.vehicle_id, comp.parca_adi, comp.maliyet, comp.omur_km, comp.degisim_km or 0)
     return {"message": "Parça eklendi."}
 
 

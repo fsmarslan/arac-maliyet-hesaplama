@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Vehicle, CostReport } from "@/types/vehicle";
-import { Car, Fuel, Wrench, AlertCircle, PlusCircle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Car, Fuel, Wrench, AlertCircle, PlusCircle, ChevronDown, ChevronUp, Trash2, AlertTriangle, FileText, Eye } from "lucide-react";
 import axios from "axios";
 import AddComponentForm from "./AddComponentForm";
+import VehicleDetailModal from "./VehicleDetailModal";
+import ServiceHistory from "./ServiceHistory";
 
 const API_BASE = "http://127.0.0.1:8000";
 
@@ -18,6 +20,8 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
   const [loading, setLoading] = useState(true);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showAddComponent, setShowAddComponent] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showServiceHistory, setShowServiceHistory] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -87,7 +91,7 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
         {/* Ana Maliyet Gösterme Alanı */}
         <div className="mt-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
           <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider mb-1">
-            Gerçek KM Maliyeti
+            Toplam KM Başına Maliyet
           </p>
           {loading ? (
             <div className="h-8 w-24 bg-blue-200 dark:bg-blue-800 animate-pulse rounded"></div>
@@ -100,36 +104,13 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
                 <span className="text-lg font-medium text-blue-600 dark:text-blue-400">TL</span>
               </div>
               
-              {/* Breakdown Toggle */}
+              {/* Detay Butonu */}
               <button 
-                onClick={() => setShowBreakdown(!showBreakdown)}
-                className="mt-2 text-xs flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors"
+                onClick={() => setShowDetailModal(true)}
+                className="mt-2 text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors font-medium"
               >
-                {showBreakdown ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                Detayları {showBreakdown ? "Gizle" : "Göster"}
+                <Eye size={14}/> Detaylı Analiz
               </button>
-
-              {/* Breakdown Details */}
-              {showBreakdown && cost.breakdown && (
-                <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800/50 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Yakıt:</span>
-                    <span className="font-semibold">{cost.breakdown.fuel} TL</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Bakım:</span>
-                    <span className="font-semibold">{cost.breakdown.maintenance} TL</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Parça/Eskime:</span>
-                    <span className="font-semibold">{cost.breakdown.wear_tear} TL</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Değer Kaybı:</span>
-                    <span className="font-semibold">{cost.breakdown.depreciation} TL</span>
-                  </div>
-                 </div>
-              )}
             </div>
           ) : (
             <span className="text-sm text-red-500 flex items-center gap-1">
@@ -137,6 +118,60 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
             </span>
           )}
         </div>
+
+        {/* Bakım Durum Çubuğu */}
+        {cost?.maintenance_status && (
+          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div className="flex justify-between items-center mb-1.5 text-xs">
+              <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                <Wrench size={12} className="text-emerald-500" />
+                Bakım Durumu
+              </span>
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
+                {cost.maintenance_status.kalan_km > 0 
+                  ? `${cost.maintenance_status.kalan_km.toLocaleString()} km kaldı`
+                  : <span className="text-red-500">Bakım geçti!</span>
+                }
+              </span>
+            </div>
+            <div className="h-2.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${
+                  cost.maintenance_status.kalan_km <= 100 
+                    ? 'bg-red-500' 
+                    : cost.maintenance_status.kalan_km <= 500 
+                      ? 'bg-yellow-500' 
+                      : 'bg-green-500'
+                }`}
+                style={{ width: `${Math.min(100, cost.maintenance_status.ilerleme_yuzdesi)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+              <span>{cost.maintenance_status.son_bakim_km?.toLocaleString()} km</span>
+              <span>{cost.maintenance_status.gelecek_bakim_km?.toLocaleString()} km</span>
+            </div>
+          </div>
+        )}
+
+        {/* Kritik Uyarılar */}
+        {cost?.warnings && cost.warnings.length > 0 && (
+          <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+            <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
+              <AlertTriangle size={14} />
+              {cost.warnings.length} Kritik Uyarı
+            </div>
+            <ul className="mt-1 space-y-0.5">
+              {cost.warnings.slice(0, 2).map((w, idx) => (
+                <li key={idx} className="text-[11px] text-red-500 dark:text-red-400 truncate">
+                  • {w.parca_adi}: {w.kalan_omur_km <= 0 ? 'GEÇMİŞ!' : `${w.kalan_omur_km} km`}
+                </li>
+              ))}
+              {cost.warnings.length > 2 && (
+                <li className="text-[10px] text-red-400">+{cost.warnings.length - 2} daha...</li>
+              )}
+            </ul>
+          </div>
+        )}
 
         {/* Alt Detaylar */}
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400 grow">
@@ -155,31 +190,60 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
         </div>
 
         {/* Aksiyonlar */}
-        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between">
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
             <button 
                 onClick={handleDelete}
                 disabled={deleting}
-                className="text-sm flex items-center gap-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                className="text-xs flex items-center gap-1 px-2 py-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50"
             >
-                <Trash2 size={16} /> {deleting ? "Siliniyor..." : "Sil"}
+                <Trash2 size={14} /> {deleting ? "..." : "Sil"}
             </button>
-            <button 
-                onClick={() => setShowAddComponent(true)}
-                className="text-sm flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-            >
-                <PlusCircle size={16} /> Parça Ekle
-            </button>
+            <div className="flex gap-2">
+              <button 
+                  onClick={() => setShowAddComponent(true)}
+                  className="text-xs flex items-center gap-1 px-2 py-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-all border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+              >
+                  <PlusCircle size={14} /> Parça
+              </button>
+              <button 
+                  onClick={() => setShowServiceHistory(true)}
+                  className="text-sm flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all font-medium shadow-sm"
+              >
+                  <FileText size={14} /> Servis Defteri
+              </button>
+            </div>
         </div>
       </div>
 
+      {/* Modaller */}
       {showAddComponent && (
         <AddComponentForm 
             vehicleId={vehicle.id} 
             onSuccess={() => {
                 setShowAddComponent(false);
-                fetchCost(); // Maliyeti güncelle çünkü parça maliyeti etkiler
+                fetchCost();
             }} 
             onCancel={() => setShowAddComponent(false)}
+        />
+      )}
+
+      {showDetailModal && cost && (
+        <VehicleDetailModal
+          vehicle={vehicle}
+          cost={cost}
+          onClose={() => setShowDetailModal(false)}
+          onOpenServiceHistory={() => {
+            setShowDetailModal(false);
+            setShowServiceHistory(true);
+          }}
+        />
+      )}
+
+      {showServiceHistory && (
+        <ServiceHistory
+          vehicle={vehicle}
+          onClose={() => setShowServiceHistory(false)}
+          onUpdate={fetchCost}
         />
       )}
     </div>

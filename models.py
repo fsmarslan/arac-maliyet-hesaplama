@@ -1,5 +1,7 @@
 import sqlite3
+import json
 from typing import List, Dict, Optional, Union
+from datetime import datetime
 try:
     from utils import get_current_fuel_prices
 except ImportError:
@@ -45,6 +47,10 @@ class VehicleManager:
                 periyodik_bakim_km INTEGER DEFAULT 10000,
                 periyodik_bakim_maliyeti REAL DEFAULT 0,
                 
+                -- Servis Takibi (NEW)
+                son_bakim_km INTEGER DEFAULT 0,
+                bakim_araligi INTEGER DEFAULT 2000,
+                
                 -- Sabit Giderler (FixedCosts)
                 yillik_sigorta REAL DEFAULT 0,
                 yillik_mtv REAL DEFAULT 0,
@@ -64,6 +70,8 @@ class VehicleManager:
             ("yakit_tipi", "TEXT DEFAULT 'benzin'"),
             ("ortalama_tuketim_l_100km", "REAL DEFAULT 0"),
             ("periyodik_bakim_maliyeti", "REAL DEFAULT 0"),
+            ("son_bakim_km", "INTEGER DEFAULT 0"),
+            ("bakim_araligi", "INTEGER DEFAULT 2000"),
             ("yillik_sigorta", "REAL DEFAULT 0"),
             ("yillik_mtv", "REAL DEFAULT 0"),
             ("yillik_ortalama_km", "INTEGER DEFAULT 15000"),
@@ -86,11 +94,36 @@ class VehicleManager:
                 parca_adi TEXT,
                 maliyet REAL,
                 omur_km INTEGER,
+                degisim_km INTEGER DEFAULT 0,
                 FOREIGN KEY (vehicle_id) REFERENCES vehicles (id) ON DELETE CASCADE
             )
         """)
 
-        # 3. Settings Tablosu (Konfigürasyon ve Fiyatlar)
+        # Migration: Consumables tablosuna yeni sütunları ekle (eğer yoksa)
+        consumable_columns = [
+            ("degisim_km", "INTEGER DEFAULT 0"),
+        ]
+        for col_name, col_type in consumable_columns:
+            try:
+                cursor.execute(f"ALTER TABLE consumables ADD COLUMN {col_name} {col_type}")
+            except sqlite3.OperationalError:
+                pass
+
+        # 3. Service Logs (Servis Kayıtları) Tablosu - YENİ
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS service_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vehicle_id INTEGER,
+                tarih TEXT NOT NULL,
+                km INTEGER NOT NULL,
+                yapilan_islemler TEXT,
+                toplam_maliyet REAL DEFAULT 0,
+                degisen_parcalar TEXT,
+                FOREIGN KEY (vehicle_id) REFERENCES vehicles (id) ON DELETE CASCADE
+            )
+        """)
+
+        # 4. Settings Tablosu (Konfigürasyon ve Fiyatlar)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -131,6 +164,7 @@ class VehicleManager:
                 'marka', 'model', 'yil', 'fotograf_url',
                 'baslangic_km', 'guncel_km', 'yakit_tipi', 'ortalama_tuketim_l_100km',
                 'periyodik_bakim_km', 'periyodik_bakim_maliyeti',
+                'son_bakim_km', 'bakim_araligi',
                 'yillik_sigorta', 'yillik_mtv', 'yillik_ortalama_km',
                 'su_anki_fiyat', 'gelecek_fiyat', 'gelecek_km'
             ]
@@ -257,8 +291,16 @@ class VehicleManager:
         # 3. Parça Eskime Payı
         consumables = self.get_vehicle_consumables(vehicle_id)
         consumable_cost = 0.0
+        consumable_details = []
         for c in consumables:
-            consumable_cost += self.div_safely(c['maliyet'], c['omur_km'])
+            parca_maliyeti = self.div_safely(c['maliyet'], c['omur_km'])
+            consumable_cost += parca_maliyeti
+            consumable_details.append({
+                "parca_adi": c['parca_adi'],
+                "km_basi_maliyet": round(parca_maliyeti, 4),
+                "toplam_maliyet": c['maliyet'],
+                "omur_km": c['omur_km']
+            })
 
         # 4. KM Başı Değer Kaybı
         # (su_anki_fiyat - gelecek_fiyat) / (gelecek_km - su_anki_km)
@@ -275,7 +317,9 @@ class VehicleManager:
 
         # 5. Sabit Gider Payı
         # (yillik_sigorta + yillik_mtv) / kullanicinin_yillik_ortalama_km
-        fixed_total = (v.get('yillik_sigorta', 0) or 0) + (v.get('yillik_mtv', 0) or 0)
+        yillik_sigorta = v.get('yillik_sigorta', 0) or 0
+        yillik_mtv = v.get('yillik_mtv', 0) or 0
+        fixed_total = yillik_sigorta + yillik_mtv
         yearly_avg_km = v.get('yillik_ortalama_km', 15000) or 15000
         
         fixed_cost = self.div_safely(fixed_total, yearly_avg_km)
@@ -293,9 +337,16 @@ class VehicleManager:
                 "depreciation_cost": round(depreciation_cost, 4),
                 "fixed_cost": round(fixed_cost, 4)
             },
+            "consumable_details": consumable_details,
+            "fixed_details": {
+                "yillik_sigorta": yillik_sigorta,
+                "yillik_mtv": yillik_mtv,
+                "yillik_ortalama_km": yearly_avg_km
+            },
             "params": {
                 "fuel_price_used": fuel_price,
-                "current_km": current_km
+                "current_km": current_km,
+                "avg_consumption": avg_consumption
             }
         }
 
@@ -336,6 +387,141 @@ class VehicleManager:
         cursor.execute("SELECT value FROM settings WHERE key=?", (key,))
         row = cursor.fetchone()
         return row['value'] if row else None
+
+    # --- SERVİS TAKİBİ FONKSİYONLARI ---
+
+    def add_service_log(self, vehicle_id: int, tarih: str, km: int, 
+                        yapilan_islemler: str, toplam_maliyet: float, 
+                        degisen_parcalar: Optional[str] = None) -> int:
+        """Yeni servis kaydı ekler."""
+        try:
+            query = """
+                INSERT INTO service_logs (vehicle_id, tarih, km, yapilan_islemler, toplam_maliyet, degisen_parcalar)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """
+            cursor = self.conn.cursor()
+            cursor.execute(query, (vehicle_id, tarih, km, yapilan_islemler, toplam_maliyet, degisen_parcalar))
+            log_id = cursor.lastrowid
+            
+            # Aracın son bakım km'sini güncelle
+            cursor.execute("UPDATE vehicles SET son_bakim_km = ? WHERE id = ?", (km, vehicle_id))
+            
+            self.conn.commit()
+            return log_id
+        except sqlite3.Error as e:
+            print(f"❌ Servis kaydı ekleme hatası: {e}")
+            return -1
+
+    def get_service_logs(self, vehicle_id: int) -> List[Dict]:
+        """Araca ait servis kayıtlarını getirir."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM service_logs WHERE vehicle_id = ? ORDER BY tarih DESC, km DESC", (vehicle_id,))
+        return [dict(row) for row in cursor.fetchall()]
+
+    def delete_service_log(self, log_id: int) -> bool:
+        """Servis kaydını siler."""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("DELETE FROM service_logs WHERE id = ?", (log_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ Servis kaydı silme hatası: {e}")
+            return False
+
+    def get_maintenance_status(self, vehicle_id: int) -> Dict:
+        """
+        Bakım durumu bilgilerini hesaplar.
+        Returns: {
+            son_bakim_km, bakim_araligi, gelecek_bakim_km,
+            guncel_km, kalan_km, ilerleme_yuzdesi
+        }
+        """
+        vehicle = self.get_vehicle_by_id(vehicle_id)
+        if not vehicle:
+            return {}
+        
+        son_bakim_km = vehicle.get('son_bakim_km', 0) or 0
+        bakim_araligi = vehicle.get('bakim_araligi', 2000) or 2000
+        guncel_km = vehicle.get('guncel_km', 0) or 0
+        
+        gelecek_bakim_km = son_bakim_km + bakim_araligi
+        kalan_km = gelecek_bakim_km - guncel_km
+        
+        # İlerleme yüzdesi hesaplama (son bakımdan şimdiye kadar)
+        gecen_km = guncel_km - son_bakim_km
+        ilerleme_yuzdesi = min(100, max(0, (gecen_km / bakim_araligi) * 100)) if bakim_araligi > 0 else 0
+        
+        return {
+            "son_bakim_km": son_bakim_km,
+            "bakim_araligi": bakim_araligi,
+            "gelecek_bakim_km": gelecek_bakim_km,
+            "guncel_km": guncel_km,
+            "kalan_km": kalan_km,
+            "ilerleme_yuzdesi": round(ilerleme_yuzdesi, 1)
+        }
+
+    def get_critical_warnings(self, vehicle_id: int, warning_threshold_km: int = 500) -> List[Dict]:
+        """
+        Kritik parça uyarılarını kontrol eder.
+        Ömrünün bitmesine warning_threshold_km'den az kalan parçaları döndürür.
+        """
+        vehicle = self.get_vehicle_by_id(vehicle_id)
+        if not vehicle:
+            return []
+        
+        guncel_km = vehicle.get('guncel_km', 0) or 0
+        consumables = self.get_vehicle_consumables(vehicle_id)
+        warnings = []
+        
+        for c in consumables:
+            degisim_km = c.get('degisim_km', 0) or 0
+            omur_km = c.get('omur_km', 10000) or 10000
+            
+            # Parçanın biteceği km
+            bitis_km = degisim_km + omur_km
+            kalan_omur = bitis_km - guncel_km
+            
+            if kalan_omur <= warning_threshold_km:
+                warnings.append({
+                    "parca_id": c['id'],
+                    "parca_adi": c['parca_adi'],
+                    "kalan_omur_km": kalan_omur,
+                    "bitis_km": bitis_km,
+                    "kritik": kalan_omur <= 0
+                })
+        
+        # Bakım uyarısı da ekle
+        maint_status = self.get_maintenance_status(vehicle_id)
+        if maint_status.get('kalan_km', 1000) <= warning_threshold_km:
+            warnings.append({
+                "parca_id": None,
+                "parca_adi": "Periyodik Bakım",
+                "kalan_omur_km": maint_status['kalan_km'],
+                "bitis_km": maint_status['gelecek_bakim_km'],
+                "kritik": maint_status['kalan_km'] <= 0
+            })
+        
+        return warnings
+
+    def add_consumable_with_km(self, vehicle_id: int, parca_adi: str, maliyet: float, omur_km: int, degisim_km: int = 0):
+        """Parça/Sarf Malzeme ekler (değişim km'si ile)."""
+        try:
+            # Eğer degisim_km verilmemişse, aracın güncel km'sini kullan
+            if degisim_km == 0:
+                vehicle = self.get_vehicle_by_id(vehicle_id)
+                if vehicle:
+                    degisim_km = vehicle.get('guncel_km', 0) or 0
+            
+            query = """
+                INSERT INTO consumables (vehicle_id, parca_adi, maliyet, omur_km, degisim_km)
+                VALUES (?, ?, ?, ?, ?)
+            """
+            cursor = self.conn.cursor()
+            cursor.execute(query, (vehicle_id, parca_adi, maliyet, omur_km, degisim_km))
+            self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"❌ Parça ekleme hatası: {e}")
 
     def close(self):
         self.conn.close()

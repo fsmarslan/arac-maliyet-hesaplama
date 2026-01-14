@@ -22,8 +22,10 @@ export default function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormPr
     guncel_km: 0,
     yakit_tipi: "benzin",
     ortalama_tuketim_l_100km: 0,
-    periyodik_bakim_km: 10000,
+    periyodik_bakim_km: 2000,
     periyodik_bakim_maliyeti: 0,
+    son_bakim_km: 0,
+    bakim_araligi: 2000,
     yillik_sigorta: 0,
     yillik_mtv: 0,
     yillik_ortalama_km: 15000,
@@ -84,6 +86,7 @@ export default function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormPr
     const isNumberField = [
         "yil", "baslangic_km", "guncel_km", "ortalama_tuketim_l_100km",
         "periyodik_bakim_km", "periyodik_bakim_maliyeti",
+        "son_bakim_km", "bakim_araligi",
         "yillik_sigorta", "yillik_mtv", "yillik_ortalama_km",
         "su_anki_fiyat", "gelecek_fiyat", "gelecek_km"
     ].includes(name);
@@ -200,43 +203,65 @@ export default function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormPr
 
             <hr className="border-gray-100 dark:border-gray-700" />
 
-            {/* Bakım & Sabit Giderler */}
-            <h3 className="section-title">Bakım & Sabit Giderler</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Servis Takibi & Bakım */}
+            <h3 className="section-title">Servis Takibi & Bakım</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="label">Son Bakım (KM)</label>
+                <input type="number" name="son_bakim_km" className="input" placeholder="Örn: 10500" onChange={handleChange} />
+              </div>
               <div>
                 <label className="label">Bakım Aralığı (KM)</label>
-                <input type="number" name="periyodik_bakim_km" className="input" defaultValue={10000} onChange={handleChange} />
+                <input 
+                  type="number" 
+                  name="bakim_araligi" 
+                  className="input" 
+                  defaultValue={2000} 
+                  onChange={(e) => {
+                    handleChange(e);
+                    // Sync with periyodik_bakim_km
+                    setFormData(prev => ({ ...prev, periyodik_bakim_km: Number(e.target.value) }));
+                  }} 
+                />
               </div>
               <div>
-                <label className="label">Ort. Bakım Maliyeti (TL)</label>
-                <input type="number" name="periyodik_bakim_maliyeti" className="input" placeholder="Örn: 3000" onChange={handleChange} />
+                <label className="label">Bakım Maliyeti (TL)</label>
+                <input type="number" name="periyodik_bakim_maliyeti" className="input" placeholder="Örn: 800" onChange={handleChange} />
               </div>
+            </div>
+
+            <hr className="border-gray-100 dark:border-gray-700" />
+
+            {/* Sabit Giderler */}
+            <h3 className="section-title">Sabit Giderler</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="label">Yıllık Sigorta (TL)</label>
-                <input type="number" name="yillik_sigorta" className="input" onChange={handleChange} />
+                <input type="number" name="yillik_sigorta" className="input" placeholder="Örn: 4000" onChange={handleChange} />
               </div>
               <div>
                 <label className="label">Yıllık MTV (TL)</label>
-                <input type="number" name="yillik_mtv" className="input" onChange={handleChange} />
+                <input type="number" name="yillik_mtv" className="input" placeholder="Örn: 1000" onChange={handleChange} />
               </div>
             </div>
 
             <hr className="border-gray-100 dark:border-gray-700" />
 
             {/* Değer Kaybı */}
-            <h3 className="section-title">Değer Kaybı Hesabı</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <h3 className="section-title">Değer Kaybı (Amortisman) Hesabı</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-3">Aracınızın belirli bir KM sonraki tahmini değerini girin</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="label">Şu Anki Fiyat (TL)</label>
-                <input type="number" name="su_anki_fiyat" className="input" onChange={handleChange} />
+                <label className="label">Şu Anki Değer (TL)</label>
+                <input type="number" name="su_anki_fiyat" className="input" placeholder="Örn: 120000" onChange={handleChange} />
               </div>
               <div>
-                <label className="label">Gelecek Fiyat (TL)</label>
-                <input type="number" name="gelecek_fiyat" className="input" onChange={handleChange} />
+                <label className="label">Tahmini Gelecek Değer (TL)</label>
+                <input type="number" name="gelecek_fiyat" className="input" placeholder="Örn: 100000" onChange={handleChange} />
               </div>
               <div>
-                <label className="label">Gelecek KM</label>
-                <input type="number" name="gelecek_km" className="input" onChange={handleChange} />
+                <label className="label">Hedef KM</label>
+                <input type="number" name="gelecek_km" className="input" placeholder="Örn: 21100" onChange={handleChange} />
               </div>
             </div>
 
