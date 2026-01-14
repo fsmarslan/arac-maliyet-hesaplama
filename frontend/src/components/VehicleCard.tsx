@@ -2,27 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { Vehicle, CostReport } from "@/types/vehicle";
-import { Car, Fuel, Wrench, AlertCircle, PlusCircle, ChevronDown, ChevronUp, Trash2, AlertTriangle, FileText, Eye } from "lucide-react";
+import { Car, Fuel, Wrench, AlertCircle, PlusCircle, ChevronDown, ChevronUp, Trash2, AlertTriangle, FileText, Eye, Edit2, Gauge } from "lucide-react";
 import axios from "axios";
 import AddComponentForm from "./AddComponentForm";
 import VehicleDetailModal from "./VehicleDetailModal";
 import ServiceHistory from "./ServiceHistory";
+import EditVehicleModal from "./EditVehicleModal";
 
 const API_BASE = "http://127.0.0.1:8000";
 
 interface VehicleCardProps {
   vehicle: Vehicle;
   onDelete?: () => void;
+  onUpdate?: () => void;
 }
 
-export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
+export default function VehicleCard({ vehicle, onDelete, onUpdate }: VehicleCardProps) {
   const [cost, setCost] = useState<CostReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showAddComponent, setShowAddComponent] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showServiceHistory, setShowServiceHistory] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [quickKm, setQuickKm] = useState<number>(vehicle.guncel_km || 0);
+  const [updatingKm, setUpdatingKm] = useState(false);
 
   const handleDelete = async () => {
     if (!confirm(`${vehicle.marka} ${vehicle.model} aracını silmek istediğinize emin misiniz?`)) {
@@ -53,6 +58,28 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
     fetchCost();
   }, [vehicle.id]);
 
+  useEffect(() => {
+    setQuickKm(vehicle.guncel_km || 0);
+  }, [vehicle.guncel_km]);
+
+  const handleQuickKmUpdate = async () => {
+    if (quickKm === vehicle.guncel_km) return;
+    setUpdatingKm(true);
+    try {
+      await axios.put(`${API_BASE}/vehicles/${vehicle.id}`, {
+        ...vehicle,
+        guncel_km: quickKm
+      });
+      onUpdate?.();
+      fetchCost();
+    } catch (err) {
+      console.error("KM update error", err);
+      alert("KM güncellenirken hata oluştu!");
+    } finally {
+      setUpdatingKm(false);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 flex flex-col h-full">
       {/* Resim Alanı */}
@@ -72,20 +99,49 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
 
       {/* İçerik */}
       <div className="p-5 flex flex-col grow">
-        <div className="mb-2">
-            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-              {vehicle.marka} {vehicle.model}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {vehicle.yil} • {vehicle.guncel_km?.toLocaleString()} km • 
-              <span className={`ml-1 px-2 py-0.5 rounded text-xs font-medium ${
-                vehicle.yakit_tipi === 'dizel' 
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' 
-                  : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              }`}>
-                {vehicle.yakit_tipi === 'dizel' ? 'Dizel' : 'Benzin'}
-              </span>
-            </p>
+        <div className="mb-2 flex justify-between items-start">
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                {vehicle.marka} {vehicle.model}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {vehicle.yil} • 
+                <span className={`ml-1 px-2 py-0.5 rounded text-xs font-medium ${
+                  vehicle.yakit_tipi === 'dizel' 
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' 
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                }`}>
+                  {vehicle.yakit_tipi === 'dizel' ? 'Dizel' : 'Benzin'}
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
+              title="Düzenle"
+            >
+              <Edit2 size={16} />
+            </button>
+        </div>
+
+        {/* Hızlı KM Güncelleme */}
+        <div className="mb-3 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Gauge size={14} className="text-blue-500" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">KM:</span>
+            <input
+              type="number"
+              value={quickKm}
+              onChange={(e) => setQuickKm(Number(e.target.value))}
+              onBlur={handleQuickKmUpdate}
+              onKeyDown={(e) => e.key === 'Enter' && handleQuickKmUpdate()}
+              className="flex-1 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              disabled={updatingKm}
+            />
+            {updatingKm && (
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            )}
+          </div>
         </div>
 
         {/* Ana Maliyet Gösterme Alanı */}
@@ -124,31 +180,51 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
           <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <div className="flex justify-between items-center mb-1.5 text-xs">
               <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                <Wrench size={12} className="text-emerald-500" />
+                <Wrench size={12} className={`${
+                  cost.maintenance_status.kalan_km <= 100 
+                    ? 'text-red-500' 
+                    : cost.maintenance_status.kalan_km <= 500 
+                      ? 'text-yellow-500' 
+                      : 'text-emerald-500'
+                }`} />
                 Bakım Durumu
               </span>
-              <span className="text-gray-800 dark:text-gray-200 font-medium">
+              <span className={`font-medium ${
+                cost.maintenance_status.kalan_km <= 0 
+                  ? 'text-red-500' 
+                  : cost.maintenance_status.kalan_km <= 100 
+                    ? 'text-red-600 dark:text-red-400' 
+                    : cost.maintenance_status.kalan_km <= 500 
+                      ? 'text-yellow-600 dark:text-yellow-400' 
+                      : 'text-gray-800 dark:text-gray-200'
+              }`}>
                 {cost.maintenance_status.kalan_km > 0 
-                  ? `${cost.maintenance_status.kalan_km.toLocaleString()} km kaldı`
-                  : <span className="text-red-500">Bakım geçti!</span>
+                  ? `${cost.maintenance_status.kalan_km.toLocaleString()} KM kaldı`
+                  : <span className="text-red-500 font-bold">Bakım geçti!</span>
                 }
               </span>
             </div>
             <div className="h-2.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
               <div 
                 className={`h-full rounded-full transition-all duration-500 ${
-                  cost.maintenance_status.kalan_km <= 100 
-                    ? 'bg-red-500' 
-                    : cost.maintenance_status.kalan_km <= 500 
-                      ? 'bg-yellow-500' 
-                      : 'bg-green-500'
+                  cost.maintenance_status.kalan_km <= 0
+                    ? 'bg-red-600 animate-pulse'
+                    : cost.maintenance_status.kalan_km <= 100 
+                      ? 'bg-red-500' 
+                      : cost.maintenance_status.kalan_km <= 300
+                        ? 'bg-orange-500'
+                        : cost.maintenance_status.kalan_km <= 500 
+                          ? 'bg-yellow-500' 
+                          : cost.maintenance_status.kalan_km <= 1000
+                            ? 'bg-lime-500'
+                            : 'bg-green-500'
                 }`}
-                style={{ width: `${Math.min(100, cost.maintenance_status.ilerleme_yuzdesi)}%` }}
+                style={{ width: `${Math.min(100, Math.max(0, cost.maintenance_status.ilerleme_yuzdesi))}%` }}
               />
             </div>
             <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-              <span>{cost.maintenance_status.son_bakim_km?.toLocaleString()} km</span>
-              <span>{cost.maintenance_status.gelecek_bakim_km?.toLocaleString()} km</span>
+              <span>{cost.maintenance_status.son_bakim_km?.toLocaleString()} KM</span>
+              <span>{cost.maintenance_status.gelecek_bakim_km?.toLocaleString()} KM</span>
             </div>
           </div>
         )}
@@ -163,7 +239,7 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
             <ul className="mt-1 space-y-0.5">
               {cost.warnings.slice(0, 2).map((w, idx) => (
                 <li key={idx} className="text-[11px] text-red-500 dark:text-red-400 truncate">
-                  • {w.parca_adi}: {w.kalan_omur_km <= 0 ? 'GEÇMİŞ!' : `${w.kalan_omur_km} km`}
+                  • {w.parca_adi}: {w.kalan_omur_km <= 0 ? 'GEÇMİŞ!' : `${w.kalan_omur_km} KM`}
                 </li>
               ))}
               {cost.warnings.length > 2 && (
@@ -185,7 +261,7 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
           </div>
           <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
             <Wrench size={14} className="text-green-500" />
-            <span>{vehicle.periyodik_bakim_km / 1000}k Bakım</span>
+            <span>{vehicle.periyodik_bakim_km / 1000}k KM Bakım</span>
           </div>
         </div>
 
@@ -194,20 +270,20 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
             <button 
                 onClick={handleDelete}
                 disabled={deleting}
-                className="text-xs flex items-center gap-1 px-2 py-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50"
+                className="text-xs flex items-center gap-1 px-2.5 py-1.5 text-gray-400 hover:text-red-500 border border-transparent hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50"
             >
                 <Trash2 size={14} /> {deleting ? "..." : "Sil"}
             </button>
             <div className="flex gap-2">
               <button 
                   onClick={() => setShowAddComponent(true)}
-                  className="text-xs flex items-center gap-1 px-2 py-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-all border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+                  className="text-xs flex items-center gap-1 px-2.5 py-1.5 text-gray-400 border border-gray-200 dark:border-gray-600 hover:text-blue-500 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
               >
                   <PlusCircle size={14} /> Parça
               </button>
               <button 
                   onClick={() => setShowServiceHistory(true)}
-                  className="text-sm flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all font-medium shadow-sm"
+                  className="text-sm flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all font-medium shadow-md shadow-emerald-500/25 active:scale-95"
               >
                   <FileText size={14} /> Servis Defteri
               </button>
@@ -236,6 +312,10 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
             setShowDetailModal(false);
             setShowServiceHistory(true);
           }}
+          onUpdate={() => {
+            onUpdate?.();
+            fetchCost();
+          }}
         />
       )}
 
@@ -244,6 +324,18 @@ export default function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
           vehicle={vehicle}
           onClose={() => setShowServiceHistory(false)}
           onUpdate={fetchCost}
+        />
+      )}
+
+      {showEditModal && (
+        <EditVehicleModal
+          vehicle={vehicle}
+          onSuccess={() => {
+            setShowEditModal(false);
+            onUpdate?.();
+            fetchCost();
+          }}
+          onCancel={() => setShowEditModal(false)}
         />
       )}
     </div>

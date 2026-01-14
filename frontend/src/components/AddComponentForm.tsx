@@ -40,16 +40,16 @@ export default function AddComponentForm({ vehicleId, onSuccess, onCancel }: Add
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold dark:text-white">Yeni Parça Ekle</h2>
-          <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-            <X size={24} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-full sm:max-w-md overflow-hidden">
+        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg sm:text-xl font-bold dark:text-white">Yeni Parça Ekle</h2>
+          <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1">
+            <X size={22} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Parça Adı
@@ -58,13 +58,13 @@ export default function AddComponentForm({ vehicleId, onSuccess, onCancel }: Add
               type="text"
               required
               placeholder="Örn: Lastik Seti, Zincir"
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
               value={formData.parca_adi}
               onChange={(e) => setFormData({ ...formData, parca_adi: e.target.value })}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Maliyet (TL)
@@ -73,7 +73,7 @@ export default function AddComponentForm({ vehicleId, onSuccess, onCancel }: Add
                 type="number"
                 required
                 min="0"
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                 value={formData.maliyet || ""}
                 onChange={(e) => setFormData({ ...formData, maliyet: parseFloat(e.target.value) || 0 })}
               />
@@ -86,27 +86,27 @@ export default function AddComponentForm({ vehicleId, onSuccess, onCancel }: Add
                 type="number"
                 required
                 min="1"
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                 value={formData.omur_km || ""}
                 onChange={(e) => setFormData({ ...formData, omur_km: parseInt(e.target.value) || 0 })}
               />
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="pt-3 flex justify-end gap-2 sm:gap-3">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 text-sm"
             >
-              <Save size={18} />
+              <Save size={16} />
               {loading ? "Ekleniyor..." : "Kaydet"}
             </button>
           </div>

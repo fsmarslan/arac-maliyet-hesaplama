@@ -284,6 +284,29 @@ def add_component_direct(comp: ComponentCreate):
     return {"message": "Parça eklendi."}
 
 
+class ComponentUpdate(BaseModel):
+    parca_adi: Optional[str] = None
+    maliyet: Optional[float] = None
+    omur_km: Optional[int] = None
+    degisim_km: Optional[int] = None
+
+@app.put("/consumables/{consumable_id}")
+def update_consumable(consumable_id: int, comp: ComponentUpdate):
+    """Parça bilgilerini günceller."""
+    success = manager.update_consumable(consumable_id, comp.dict(exclude_none=True))
+    if not success:
+        raise HTTPException(status_code=500, detail="Parça güncellenemedi.")
+    return {"message": "Parça güncellendi."}
+
+@app.delete("/consumables/{consumable_id}")
+def delete_consumable(consumable_id: int):
+    """Parçayı siler."""
+    success = manager.delete_consumable(consumable_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Parça silinemedi.")
+    return {"message": "Parça silindi."}
+
+
 # --- DOSYA YÜKLEME ---
 
 @app.post("/upload")

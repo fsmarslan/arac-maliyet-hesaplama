@@ -41,6 +41,7 @@ export interface CostBreakdown {
 }
 
 export interface ConsumableDetail {
+  id?: number;
   parca_adi: string;
   km_basi_maliyet: number;
   toplam_maliyet: number;

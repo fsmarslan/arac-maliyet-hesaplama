@@ -253,6 +253,41 @@ class VehicleManager:
         cursor.execute("SELECT * FROM consumables WHERE vehicle_id = ?", (vehicle_id,))
         return [dict(row) for row in cursor.fetchall()]
 
+    def update_consumable(self, consumable_id: int, data: Dict) -> bool:
+        """Parça bilgilerini günceller."""
+        try:
+            set_clauses = []
+            values = []
+            for k, v in data.items():
+                if k != 'id' and v is not None:
+                    set_clauses.append(f"{k} = ?")
+                    values.append(v)
+            
+            if not set_clauses:
+                return True
+                
+            values.append(consumable_id)
+            query = f"UPDATE consumables SET {', '.join(set_clauses)} WHERE id = ?"
+            
+            cursor = self.conn.cursor()
+            cursor.execute(query, tuple(values))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ Parça güncelleme hatası: {e}")
+            return False
+
+    def delete_consumable(self, consumable_id: int) -> bool:
+        """Parçayı siler."""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("DELETE FROM consumables WHERE id = ?", (consumable_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ Parça silme hatası: {e}")
+            return False
+
     # --- HESAPLAMA MOTORU (THE ENGINE) ---
 
     def calculate_total_km_cost(self, vehicle_id: int) -> Dict:

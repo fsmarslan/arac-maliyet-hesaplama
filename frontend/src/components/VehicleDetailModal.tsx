@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
+import axios from "axios";
 import { Vehicle, CostReport } from "@/types/vehicle";
-import { X, Fuel, Wrench, Settings, TrendingDown, FileText, AlertTriangle } from "lucide-react";
+import { X, Fuel, Wrench, Settings, TrendingDown, FileText, AlertTriangle, Gauge } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+
+const API_BASE = "http://127.0.0.1:8000";
 
 interface VehicleDetailModalProps {
   vehicle: Vehicle;
   cost: CostReport;
   onClose: () => void;
   onOpenServiceHistory: () => void;
+  onUpdate?: () => void;
 }
 
 const COLORS = ['#f97316', '#22c55e', '#a855f7', '#ef4444', '#6b7280'];
@@ -17,12 +22,33 @@ export default function VehicleDetailModal({
   vehicle, 
   cost, 
   onClose, 
-  onOpenServiceHistory 
+  onOpenServiceHistory,
+  onUpdate
 }: VehicleDetailModalProps) {
+  const [quickKm, setQuickKm] = useState(vehicle.guncel_km || 0);
+  const [updatingKm, setUpdatingKm] = useState(false);
+
   const breakdown = cost.breakdown;
   const consumableDetails = cost.consumable_details || [];
   const fixedDetails = cost.fixed_details;
   const warnings = cost.warnings || [];
+
+  const handleQuickKmUpdate = async () => {
+    if (quickKm === vehicle.guncel_km) return;
+    setUpdatingKm(true);
+    try {
+      await axios.put(`${API_BASE}/vehicles/${vehicle.id}`, {
+        ...vehicle,
+        guncel_km: quickKm
+      });
+      onUpdate?.();
+    } catch (err) {
+      console.error("KM update error", err);
+      alert("KM güncellenirken hata oluştu!");
+    } finally {
+      setUpdatingKm(false);
+    }
+  };
 
   // Pie chart data
   const pieData = [
@@ -42,7 +68,7 @@ export default function VehicleDetailModal({
       <div className="bg-white dark:bg-gray-800 w-full max-w-full sm:max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600">
+        <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 shrink-0">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-white">
               {vehicle.marka} {vehicle.model}
@@ -57,6 +83,27 @@ export default function VehicleDetailModal({
           </button>
         </div>
 
+        {/* Quick KM Update Bar */}
+        <div className="px-4 sm:px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30 shrink-0">
+          <div className="flex items-center gap-3">
+            <Gauge size={16} className="text-blue-500" />
+            <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">Güncel KM:</span>
+            <input
+              type="number"
+              value={quickKm}
+              onChange={(e) => setQuickKm(Number(e.target.value))}
+              className="flex-1 max-w-[150px] px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-blue-200 dark:border-blue-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+            <button
+              onClick={handleQuickKmUpdate}
+              disabled={updatingKm || quickKm === vehicle.guncel_km}
+              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {updatingKm ? "..." : "Güncelle"}
+            </button>
+          </div>
+        </div>
+
         {/* Content */}
         <div className="overflow-y-auto p-4 sm:p-6 space-y-5">
           
@@ -65,26 +112,37 @@ export default function VehicleDetailModal({
             {/* Pie Chart */}
             <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
               <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 text-center">Maliyet Dağılımı</h4>
-              <div className="h-48">
+              <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={pieData}
                       cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={70}
+                      cy="45%"
+                      innerRadius={35}
+                      outerRadius={55}
                       paddingAngle={2}
                       dataKey="value"
-                      label={({ percent }) => `${((percent || 0) * 100).toFixed(0)}%`}
-                      labelLine={false}
+                      label={({ percent, cx, cy, midAngle, outerRadius }) => {
+                        if (midAngle === undefined || cx === undefined || cy === undefined || outerRadius === undefined) return null;
+                        const RADIAN = Math.PI / 180;
+                        const radius = (outerRadius as number) + 20;
+                        const x = (cx as number) + radius * Math.cos(-midAngle * RADIAN);
+                        const y = (cy as number) + radius * Math.sin(-midAngle * RADIAN);
+                        return (
+                          <text x={x} y={y} fill="#666" textAnchor={x > (cx as number) ? 'start' : 'end'} dominantBaseline="central" fontSize={11}>
+                            {`${((percent || 0) * 100).toFixed(0)}%`}
+                          </text>
+                        );
+                      }}
+                      labelLine={true}
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip 
-                      formatter={(value) => `${Number(value).toFixed(4)} TL/KM`}
+                      formatter={(value) => `${Number(value).toFixed(2)} TL/KM`}
                       contentStyle={{ 
                         backgroundColor: 'rgba(255,255,255,0.95)', 
                         borderRadius: '8px',
@@ -166,9 +224,12 @@ export default function VehicleDetailModal({
                     </p>
                   </div>
                 </div>
-                <span className="text-lg sm:text-xl font-bold text-orange-600 dark:text-orange-400">
-                  {breakdown?.fuel?.toFixed(4)} <span className="text-xs font-normal">TL</span>
-                </span>
+                <div className="text-right">
+                  <span className="text-lg sm:text-xl font-bold text-orange-600 dark:text-orange-400">
+                    {breakdown?.fuel?.toFixed(2)} <span className="text-xs font-normal">TL</span>
+                  </span>
+                  <p className="text-[10px] text-gray-400">{breakdown?.fuel?.toFixed(4)} TL/KM</p>
+                </div>
               </div>
 
               {/* Periyodik Bakım */}
@@ -180,13 +241,16 @@ export default function VehicleDetailModal({
                   <div>
                     <p className="font-semibold text-gray-800 dark:text-white text-sm">🛠️ Periyodik Bakım</p>
                     <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                      {vehicle.periyodik_bakim_maliyeti?.toLocaleString()} TL / {vehicle.periyodik_bakim_km?.toLocaleString()} km
+                      {vehicle.periyodik_bakim_maliyeti?.toLocaleString()} TL / {vehicle.periyodik_bakim_km?.toLocaleString()} KM
                     </p>
                   </div>
                 </div>
-                <span className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
-                  {breakdown?.maintenance?.toFixed(4)} <span className="text-xs font-normal">TL</span>
-                </span>
+                <div className="text-right">
+                  <span className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
+                    {breakdown?.maintenance?.toFixed(2)} <span className="text-xs font-normal">TL</span>
+                  </span>
+                  <p className="text-[10px] text-gray-400">{breakdown?.maintenance?.toFixed(4)} TL/KM</p>
+                </div>
               </div>
 
               {/* Parça Eskime */}
@@ -201,9 +265,12 @@ export default function VehicleDetailModal({
                       <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Zincir, Balata, Lastik vb.</p>
                     </div>
                   </div>
-                  <span className="text-lg sm:text-xl font-bold text-purple-600 dark:text-purple-400">
-                    {breakdown?.wear_tear?.toFixed(4)} <span className="text-xs font-normal">TL</span>
-                  </span>
+                  <div className="text-right">
+                    <span className="text-lg sm:text-xl font-bold text-purple-600 dark:text-purple-400">
+                      {breakdown?.wear_tear?.toFixed(2)} <span className="text-xs font-normal">TL</span>
+                    </span>
+                    <p className="text-[10px] text-gray-400">{breakdown?.wear_tear?.toFixed(4)} TL/KM</p>
+                  </div>
                 </div>
                 
                 {consumableDetails.length > 0 && (
@@ -211,10 +278,10 @@ export default function VehicleDetailModal({
                     {consumableDetails.map((c, idx) => (
                       <div key={idx} className="flex justify-between text-xs">
                         <span className="text-gray-600 dark:text-gray-400">• {c.parca_adi}</span>
-                        <span className="text-purple-600 dark:text-purple-400 font-medium">
-                          {c.km_basi_maliyet.toFixed(4)} TL
+                        <span className="text-purple-600 dark:text-purple-400 font-medium" title={`${c.km_basi_maliyet.toFixed(4)} TL/KM`}>
+                          {c.km_basi_maliyet.toFixed(2)} TL
                           <span className="text-[10px] text-gray-400 ml-1">
-                            ({c.toplam_maliyet?.toLocaleString()} / {c.omur_km?.toLocaleString()} km)
+                            ({c.toplam_maliyet?.toLocaleString()} / {c.omur_km?.toLocaleString()} KM)
                           </span>
                         </span>
                       </div>
@@ -237,9 +304,12 @@ export default function VehicleDetailModal({
                       </p>
                     </div>
                   </div>
-                  <span className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">
-                    {breakdown?.depreciation?.toFixed(4)} <span className="text-xs font-normal">TL</span>
-                  </span>
+                  <div className="text-right">
+                    <span className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">
+                      {breakdown?.depreciation?.toFixed(2)} <span className="text-xs font-normal">TL</span>
+                    </span>
+                    <p className="text-[10px] text-gray-400">{breakdown?.depreciation?.toFixed(4)} TL/KM</p>
+                  </div>
                 </div>
                 {depreciationKmRange > 0 && (
                   <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-700/50">
@@ -262,9 +332,12 @@ export default function VehicleDetailModal({
                       <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Vergi + Sigorta</p>
                     </div>
                   </div>
-                  <span className="text-lg sm:text-xl font-bold text-gray-600 dark:text-gray-300">
-                    {breakdown?.insurance?.toFixed(4)} <span className="text-xs font-normal">TL</span>
-                  </span>
+                  <div className="text-right">
+                    <span className="text-lg sm:text-xl font-bold text-gray-600 dark:text-gray-300">
+                      {breakdown?.insurance?.toFixed(2)} <span className="text-xs font-normal">TL</span>
+                    </span>
+                    <p className="text-[10px] text-gray-400">{breakdown?.insurance?.toFixed(4)} TL/KM</p>
+                  </div>
                 </div>
                 
                 {fixedDetails && (

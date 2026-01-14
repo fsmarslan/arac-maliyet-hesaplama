@@ -97,7 +97,7 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
               Servis Defteri
             </h2>
             <p className="text-emerald-100 text-xs sm:text-sm">
-              {vehicle.marka} {vehicle.model} - {vehicle.guncel_km?.toLocaleString()} km
+              {vehicle.marka} {vehicle.model} - {vehicle.guncel_km?.toLocaleString()} KM
             </p>
           </div>
           <button 
@@ -126,10 +126,10 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
 
           {/* Yeni Kayıt Formu */}
           {showAddForm && (
-            <form onSubmit={handleSubmit} className="p-5 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 space-y-4">
-              <h3 className="font-bold text-gray-800 dark:text-white mb-4">Yeni Servis Kaydı</h3>
+            <form onSubmit={handleSubmit} className="p-4 sm:p-5 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 space-y-3 sm:space-y-4">
+              <h3 className="font-bold text-gray-800 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Yeni Servis Kaydı</h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Tarih
@@ -137,20 +137,20 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
                   <input
                     type="date"
                     required
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
                     value={formData.tarih}
                     onChange={(e) => setFormData({ ...formData, tarih: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Kilometre
+                    Kilometre (KM)
                   </label>
                   <input
                     type="number"
                     required
                     min="0"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
                     value={formData.km || ""}
                     onChange={(e) => setFormData({ ...formData, km: parseInt(e.target.value) || 0 })}
                   />
@@ -163,15 +163,15 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
                 </label>
                 <textarea
                   required
-                  rows={3}
+                  rows={2}
                   placeholder="Yağ değişimi, Filtre değişimi, Zincir yağlama..."
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none resize-none text-sm"
                   value={formData.yapilan_islemler}
                   onChange={(e) => setFormData({ ...formData, yapilan_islemler: e.target.value })}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Toplam Maliyet (TL)
@@ -180,7 +180,7 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
                     type="number"
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
                     value={formData.toplam_maliyet || ""}
                     onChange={(e) => setFormData({ ...formData, toplam_maliyet: parseFloat(e.target.value) || 0 })}
                   />
@@ -192,25 +192,25 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
                   <input
                     type="text"
                     placeholder="Yağ Filtresi, Hava Filtresi..."
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
                     value={formData.degisen_parcalar || ""}
                     onChange={(e) => setFormData({ ...formData, degisen_parcalar: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-2 sm:gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  className="px-3 sm:px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-sm"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  className="px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 text-sm"
                 >
                   {submitting ? "Kaydediliyor..." : "Kaydet"}
                 </button>
@@ -252,7 +252,7 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
                         </div>
                         <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
                           <Gauge size={14} className="text-emerald-500" />
-                          {log.km?.toLocaleString()} km
+                          {log.km?.toLocaleString()} KM
                         </div>
                         <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                           <Coins size={14} />
