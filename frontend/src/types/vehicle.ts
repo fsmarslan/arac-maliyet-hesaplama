@@ -37,7 +37,7 @@ export interface CostBreakdown {
   maintenance: number;
   wear_tear: number;
   depreciation: number;
-  insurance: number;
+  fixed_cost_per_km?: number;
 }
 
 export interface ConsumableDetail {
@@ -52,6 +52,7 @@ export interface FixedDetails {
   yillik_sigorta: number;
   yillik_mtv: number;
   yillik_ortalama_km: number;
+  total_fixed_yearly?: number;
 }
 
 export interface MaintenanceStatus {
@@ -74,6 +75,7 @@ export interface CriticalWarning {
 export interface CostReport {
   vehicle_id: number;
   total_cost_per_km: number;
+  total_fixed_cost_yearly?: number;
   breakdown?: CostBreakdown;
   consumable_details?: ConsumableDetail[];
   fixed_details?: FixedDetails;

@@ -16,7 +16,7 @@ interface VehicleDetailModalProps {
   onUpdate?: () => void;
 }
 
-const COLORS = ['#f97316', '#22c55e', '#a855f7', '#ef4444', '#6b7280'];
+const COLORS = ['#f97316', '#22c55e', '#a855f7', '#ef4444'];
 
 export default function VehicleDetailModal({ 
   vehicle, 
@@ -34,6 +34,7 @@ export default function VehicleDetailModal({
   const warnings = cost.warnings || [];
 
   const handleQuickKmUpdate = async () => {
+    // ... (logic remains same)
     if (quickKm === vehicle.guncel_km) return;
     setUpdatingKm(true);
     try {
@@ -50,13 +51,12 @@ export default function VehicleDetailModal({
     }
   };
 
-  // Pie chart data
+  // Pie chart data (Sabit Giderler hariç)
   const pieData = [
     { name: 'Yakıt', value: breakdown?.fuel || 0, color: '#f97316' },
     { name: 'Bakım', value: breakdown?.maintenance || 0, color: '#22c55e' },
     { name: 'Parça Eskime', value: breakdown?.wear_tear || 0, color: '#a855f7' },
     { name: 'Değer Kaybı', value: breakdown?.depreciation || 0, color: '#ef4444' },
-    { name: 'Sabit Gider', value: breakdown?.insurance || 0, color: '#6b7280' },
   ].filter(item => item.value > 0);
 
   // Calculate depreciation context
@@ -162,7 +162,7 @@ export default function VehicleDetailModal({
             {/* Toplam Maliyet */}
             <div className="flex flex-col justify-center text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-100 dark:border-blue-800/50">
               <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider mb-2">
-                Toplam KM Başına Maliyet
+                1 KM Sürüş Maliyeti
               </p>
               <div className="flex items-baseline justify-center gap-2">
                 <span className="text-4xl sm:text-5xl font-extrabold text-blue-700 dark:text-blue-300">
@@ -170,8 +170,8 @@ export default function VehicleDetailModal({
                 </span>
                 <span className="text-lg sm:text-xl font-medium text-blue-600 dark:text-blue-400">TL</span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Her kilometre için ödediğiniz gerçek maliyet
+              <p className="text-[10px] sm:text-xs text-blue-500 dark:text-blue-400 mt-2 font-medium">
+                Bu araçla 1 KM gitmenin bedeli {cost.total_cost_per_km.toFixed(2)} TL'dir (Sabit vergiler hariç).
               </p>
             </div>
           </div>
@@ -328,31 +328,31 @@ export default function VehicleDetailModal({
                       <FileText className="text-gray-600 dark:text-gray-400" size={18} />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800 dark:text-white text-sm">📜 Sabit Giderler</p>
-                      <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Vergi + Sigorta</p>
+                      <p className="font-semibold text-gray-800 dark:text-white text-sm">📜 Yıllık Sabit Giderler</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Sigorta + MTV (KM'den Bağımsız)</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-lg sm:text-xl font-bold text-gray-600 dark:text-gray-300">
-                      {breakdown?.insurance?.toFixed(2)} <span className="text-xs font-normal">TL</span>
+                    <span className="text-lg sm:text-xl font-bold text-gray-700 dark:text-gray-100">
+                      {fixedDetails?.total_fixed_yearly?.toLocaleString() || (cost.total_fixed_cost_yearly?.toLocaleString())} <span className="text-xs font-normal">TL</span>
                     </span>
-                    <p className="text-[10px] text-gray-400">{breakdown?.insurance?.toFixed(4)} TL/KM</p>
+                    <p className="text-[10px] text-gray-400">Yıllık Toplam</p>
                   </div>
                 </div>
                 
                 {fixedDetails && (
-                  <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600/50 space-y-1 text-xs">
+                  <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600/50 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">• Yıllık Sigorta</span>
-                      <span className="text-gray-600 dark:text-gray-400">{fixedDetails.yillik_sigorta?.toLocaleString()} TL</span>
+                      <span className="text-gray-500">• Sigorta</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">{fixedDetails.yillik_sigorta?.toLocaleString()} TL</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">• Yıllık MTV</span>
-                      <span className="text-gray-600 dark:text-gray-400">{fixedDetails.yillik_mtv?.toLocaleString()} TL</span>
+                      <span className="text-gray-500">• MTV</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">{fixedDetails.yillik_mtv?.toLocaleString()} TL</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">• Yıllık Ort. KM</span>
-                      <span className="text-gray-600 dark:text-gray-400">{fixedDetails.yillik_ortalama_km?.toLocaleString()} km</span>
+                    <div className="flex justify-between col-span-2 mt-1 bg-white/40 dark:bg-black/20 p-1.5 rounded italic text-gray-500 dark:text-gray-400">
+                      <span>Bilgi:</span>
+                      <span>Bu kalemler sürüş maliyetine (TL/KM) dahil edilmemiştir.</span>
                     </div>
                   </div>
                 )}

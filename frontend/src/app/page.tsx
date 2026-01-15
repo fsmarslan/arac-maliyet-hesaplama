@@ -24,15 +24,11 @@ export default function Home() {
     fetchVehicles();
   }, []);
 
-  // Determine if we need scrolling based on vehicle count
-  // Single row on lg: 3 cards, md: 2 cards - if vehicles fit in one row, no scroll needed
-  const needsScroll = vehicles.length > 3;
-
   return (
-    <div className={`min-h-screen flex flex-col bg-gray-50 dark:bg-[#0f1115] text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 ${!needsScroll ? 'h-screen overflow-hidden' : ''}`}>
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-[#0f1115] text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 overflow-hidden">
       
       {/* Header */}
-      <header className="bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30 shadow-sm backdrop-blur-md bg-opacity-90 dark:bg-opacity-90 shrink-0">
+      <header className="bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-gray-800 z-30 shadow-sm backdrop-blur-md bg-opacity-90 dark:bg-opacity-90 shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-blue-600 p-2 rounded-lg text-white">
@@ -53,36 +49,38 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full ${needsScroll ? 'overflow-y-auto' : ''}`}>
-        
-        {/* İstatistik / Özet Kartı (Opsiyonel header altı) */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Araç Filom</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            Toplam {vehicles.length} aracınızın detaylı maliyet analizleri aşağıdadır.
-          </p>
-        </div>
+      {/* Main Content Area - Scrollable */}
+      <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+          
+          {/* İstatistik / Özet Kartı (Opsiyonel header altı) */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Araç Filom</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Toplam {vehicles.length} aracınızın detaylı maliyet analizleri aşağıdadır.
+            </p>
+          </div>
 
-        {/* Grid Kartlar */}
-        {vehicles.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-            {vehicles.map((vehicle) => (
-              <VehicleCard key={vehicle.id} vehicle={vehicle} onDelete={fetchVehicles} onUpdate={fetchVehicles} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16 bg-white dark:bg-[#161b22] rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">Henüz hiç araç eklemediniz.</p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
-            >
-              İlk aracınızı ekleyin
-            </button>
-          </div>
-        )}
-      </main>
+          {/* Grid Kartlar */}
+          {vehicles.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+              {vehicles.map((vehicle) => (
+                <VehicleCard key={vehicle.id} vehicle={vehicle} onDelete={fetchVehicles} onUpdate={fetchVehicles} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-white dark:bg-[#161b22] rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+              <p className="text-gray-500 dark:text-gray-400 mb-4">Henüz hiç araç eklemediniz.</p>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+              >
+                İlk aracınızı ekleyin
+              </button>
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Modal */}
       {isModalOpen && (

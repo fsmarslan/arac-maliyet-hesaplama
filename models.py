@@ -350,33 +350,35 @@ class VehicleManager:
         )
         if depreciation_cost < 0: depreciation_cost = 0 # Negatif değer kaybı (kar) olmasın
 
-        # 5. Sabit Gider Payı
+        # 5. Sabit Gider Payı (Analiz için hesaplanıyor ama toplam KM maliyetine dahil edilmiyor)
         # (yillik_sigorta + yillik_mtv) / kullanicinin_yillik_ortalama_km
         yillik_sigorta = v.get('yillik_sigorta', 0) or 0
         yillik_mtv = v.get('yillik_mtv', 0) or 0
         fixed_total = yillik_sigorta + yillik_mtv
         yearly_avg_km = v.get('yillik_ortalama_km', 15000) or 15000
         
-        fixed_cost = self.div_safely(fixed_total, yearly_avg_km)
+        fixed_cost_per_km = self.div_safely(fixed_total, yearly_avg_km)
 
-        # TOPLAM
-        total_cost = fuel_cost + maintenance_unit_cost + consumable_cost + depreciation_cost + fixed_cost
+        # TOPLAM (Sadece marjinal/sürüşe bağlı giderler)
+        total_marginal_cost = fuel_cost + maintenance_unit_cost + consumable_cost + depreciation_cost
 
         return {
             "vehicle_id": vehicle_id,
-            "total_cost_per_km": round(total_cost, 4), # Kuruş hesabı için 4 hane
+            "total_cost_per_km": round(total_marginal_cost, 4), # Kuruş hesabı için 4 hane
+            "total_fixed_cost_yearly": round(fixed_total, 2),
             "breakdown": {
                 "fuel_cost": round(fuel_cost, 4),
                 "maintenance_cost": round(maintenance_unit_cost, 4),
                 "consumable_cost": round(consumable_cost, 4),
                 "depreciation_cost": round(depreciation_cost, 4),
-                "fixed_cost": round(fixed_cost, 4)
+                "fixed_cost_per_km": round(fixed_cost_per_km, 4)
             },
             "consumable_details": consumable_details,
             "fixed_details": {
                 "yillik_sigorta": yillik_sigorta,
                 "yillik_mtv": yillik_mtv,
-                "yillik_ortalama_km": yearly_avg_km
+                "yillik_ortalama_km": yearly_avg_km,
+                "total_fixed_yearly": fixed_total
             },
             "params": {
                 "fuel_price_used": fuel_price,

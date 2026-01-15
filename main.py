@@ -260,12 +260,13 @@ def get_costs(vehicle_id: int):
     return {
         "vehicle_id": result.get("vehicle_id"),
         "total_cost_per_km": result.get("total_cost_per_km", 0),
+        "total_fixed_cost_yearly": result.get("total_fixed_cost_yearly", 0),
         "breakdown": {
             "fuel": result.get("breakdown", {}).get("fuel_cost", 0),
             "maintenance": result.get("breakdown", {}).get("maintenance_cost", 0),
             "wear_tear": result.get("breakdown", {}).get("consumable_cost", 0),
             "depreciation": result.get("breakdown", {}).get("depreciation_cost", 0),
-            "insurance": result.get("breakdown", {}).get("fixed_cost", 0)
+            "fixed_cost_per_km": result.get("breakdown", {}).get("fixed_cost_per_km", 0)
         },
         "consumable_details": result.get("consumable_details", []),
         "fixed_details": result.get("fixed_details", {}),
