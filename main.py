@@ -65,29 +65,49 @@ class VehicleBase(BaseModel):
     gelecek_fiyat: float = 0.0
     gelecek_km: int = 0
 
-class VehicleCreate(VehicleBase):
-    pass
+class VehicleCreate(BaseModel):
+    # Zorunlu Alanlar
+    marka: str = Field(..., min_length=1, description="Araç Markası")
+    model: str = Field(..., min_length=1, description="Araç Modeli")
+    yil: int = Field(..., ge=1900, le=2030, description="Üretim Yılı")
+    guncel_km: int = Field(..., ge=0, description="Güncel Kilometre")
+
+    # Opsiyonel / Varsayılan Değerli Alanlar
+    fotograf_url: Optional[str] = None
+    baslangic_km: Optional[int] = 0
+    yakit_tipi: Optional[str] = "benzin"
+    ortalama_tuketim_l_100km: Optional[float] = 0.0
+    periyodik_bakim_km: Optional[int] = 10000
+    periyodik_bakim_maliyeti: Optional[float] = 0.0
+    son_bakim_km: Optional[int] = 0
+    bakim_araligi: Optional[int] = 2000
+    yillik_sigorta: Optional[float] = 0.0
+    yillik_mtv: Optional[float] = 0.0
+    yillik_ortalama_km: Optional[int] = 15000
+    su_anki_fiyat: Optional[float] = 0.0
+    gelecek_fiyat: Optional[float] = 0.0
+    gelecek_km: Optional[int] = 0
 
 class VehicleUpdate(VehicleBase):
     pass
 
 class ComponentCreate(BaseModel):
     vehicle_id: int
-    parca_adi: str
-    maliyet: float
-    omur_km: int
-    degisim_km: Optional[int] = 0
+    parca_adi: str = Field(..., min_length=1)
+    maliyet: float = Field(..., ge=0)
+    omur_km: int = Field(..., gt=0, description="Parçanın ömrü 0 olamaz")
+    degisim_km: Optional[int] = Field(0, ge=0)
 
 class ServiceLogCreate(BaseModel):
     vehicle_id: int
     tarih: str
-    km: int
-    yapilan_islemler: str
-    toplam_maliyet: float = 0.0
+    km: int = Field(..., ge=0)
+    yapilan_islemler: str = Field(..., min_length=1)
+    toplam_maliyet: float = Field(0.0, ge=0)
     degisen_parcalar: Optional[str] = None
 
 class SettingsUpdate(BaseModel):
-    manual_fuel_price: Optional[float] = None
+    manual_fuel_price: Optional[float] = Field(None, ge=0)
 
 # --- API ENDPOINTS ---
 

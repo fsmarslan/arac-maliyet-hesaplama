@@ -215,8 +215,9 @@ class VehicleManager:
         """Aracı ve ilişkili parçalarını siler."""
         try:
             cursor = self.conn.cursor()
-            # Önce ilişkili parçaları sil
+            # Önce ilişkili parçaları ve servis kayıtlarını sil (Cascade Logic)
             cursor.execute("DELETE FROM consumables WHERE vehicle_id = ?", (vehicle_id,))
+            cursor.execute("DELETE FROM service_logs WHERE vehicle_id = ?", (vehicle_id,))
             # Sonra aracı sil
             cursor.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
             self.conn.commit()
@@ -344,10 +345,17 @@ class VehicleManager:
         current_km = v.get('guncel_km', 0) or 0
         future_km = v.get('gelecek_km', 0) or 0
         
-        depreciation_cost = self.div_safely(
-            (current_price - future_price), 
-            (future_km - current_km)
-        )
+        # Mantıksal Koruma: Gelecek KM, güncel KM'den küçük veya eşit olamaz.
+        # Bu durumda kullanıcıya hata vermez ama hesaplamayı 0 yaparız.
+        km_diff = future_km - current_km
+        if km_diff <= 0:
+            depreciation_cost = 0.0
+        else:
+            depreciation_cost = self.div_safely(
+                (current_price - future_price), 
+                km_diff
+            )
+            
         if depreciation_cost < 0: depreciation_cost = 0 # Negatif değer kaybı (kar) olmasın
 
         # 5. Sabit Gider Payı (Analiz için hesaplanıyor ama toplam KM maliyetine dahil edilmiyor)

@@ -232,6 +232,7 @@ export default function ServiceHistory({ vehicle, onClose, onUpdate }: ServiceHi
               <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
                 <Wrench size={40} className="mx-auto mb-2 opacity-50" />
                 <p>Henüz servis kaydı bulunmuyor.</p>
+                <p className="text-sm mt-2 text-emerald-600 cursor-pointer" onClick={() => setShowAddForm(true)}>İlk servis kaydını eklemek için tıklayın</p>
               </div>
             ) : (
               <div className="space-y-3">
