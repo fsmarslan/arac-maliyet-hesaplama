@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Vehicle } from "@/types/vehicle";
-import { X, Save, Upload } from "lucide-react";
+import { X, Save, Upload, ChevronDown, ChevronUp } from "lucide-react";
 
 const API_BASE = "http://127.0.0.1:8000";
 
@@ -38,6 +38,17 @@ export default function EditVehicleModal({ vehicle, onSuccess, onCancel }: EditV
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(vehicle.fotograf_url || null);
+  
+  // Accordion state - all sections open by default
+  const [openSections, setOpenSections] = useState({
+    temel: true,
+    gider: true,
+    bakim: true
+  });
+
+  const toggleSection = (section: 'temel' | 'gider' | 'bakim') => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,13 +114,14 @@ export default function EditVehicleModal({ vehicle, onSuccess, onCancel }: EditV
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-full sm:max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
-        <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-amber-500 to-orange-500 shrink-0">
+      <div className="bg-white dark:bg-gray-900 w-full max-w-full sm:max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        {/* Header */}
+        <div className="p-3 sm:p-4 border-b border-slate-700 flex justify-between items-center bg-gradient-to-r from-slate-800 to-slate-700 shrink-0">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-white">Araç Düzenle</h2>
-            <p className="text-amber-100 text-xs sm:text-sm">{vehicle.marka} {vehicle.model}</p>
+            <p className="text-slate-300 text-xs sm:text-sm">{vehicle.marka} {vehicle.model}</p>
           </div>
-          <button onClick={onCancel} className="text-white/80 hover:text-white p-1">
+          <button onClick={onCancel} className="text-white/80 hover:text-white p-1 transition-colors">
             <X size={22} />
           </button>
         </div>
@@ -117,245 +129,294 @@ export default function EditVehicleModal({ vehicle, onSuccess, onCancel }: EditV
         <div className="overflow-y-auto p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Temel Bilgiler */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <h3 className="section-title">Temel Bilgiler</h3>
-                <div>
-                  <label className="label">Marka</label>
-                  <input 
-                    required 
-                    name="marka" 
-                    className="input" 
-                    value={formData.marka}
-                    onChange={handleChange} 
-                  />
-                </div>
-                <div>
-                  <label className="label">Model</label>
-                  <input 
-                    required 
-                    name="model" 
-                    className="input" 
-                    value={formData.model}
-                    onChange={handleChange} 
-                  />
-                </div>
-                <div>
-                  <label className="label">Yıl</label>
-                  <input 
-                    required 
-                    type="number" 
-                    name="yil" 
-                    className="input" 
-                    value={formData.yil}
-                    onChange={handleChange} 
-                  />
-                </div>
-                <div>
-                  <label className="label">Fotoğraf</label>
-                  <div className="space-y-2">
-                    {previewUrl && (
-                      <div className="relative w-full h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
-                        <img src={previewUrl} alt="Önizleme" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <label className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                        disabled={uploading}
+            {/* Priority: Güncel Kilometre - Always Visible */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-750 border-2 border-blue-200 dark:border-slate-600 rounded-xl p-4 shadow-md">
+              <label className="block text-sm font-bold text-blue-900 dark:text-blue-200 mb-2">
+                📍 Güncel Kilometre
+              </label>
+              <input 
+                type="number" 
+                name="guncel_km" 
+                className="w-full px-4 py-3 rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-700/50 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-lg font-semibold"
+                value={formData.guncel_km}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    guncel_km: value,
+                    baslangic_km: prev.baslangic_km || value
+                  }));
+                }} 
+              />
+            </div>
+
+            {/* Accordion Section 1: 🚗 Temel Bilgiler */}
+            <div className="border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleSection('temel')}
+                className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 flex items-center justify-between transition-colors"
+              >
+                <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm sm:text-base">
+                  🚗 Temel Bilgiler
+                </span>
+                {openSections.temel ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </button>
+              
+              {openSections.temel && (
+                <div className="p-4 bg-white dark:bg-slate-900 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Marka</label>
+                      <input 
+                        required 
+                        name="marka" 
+                        className="input" 
+                        value={formData.marka}
+                        onChange={handleChange} 
                       />
-                      {uploading ? (
-                        <span className="text-sm text-gray-500">Yükleniyor...</span>
-                      ) : (
-                        <>
-                          <Upload size={16} className="text-gray-500" />
-                          <span className="text-sm text-gray-600 dark:text-gray-400">Değiştir</span>
-                        </>
-                      )}
-                    </label>
+                    </div>
+                    <div>
+                      <label className="label">Model</label>
+                      <input 
+                        required 
+                        name="model" 
+                        className="input" 
+                        value={formData.model}
+                        onChange={handleChange} 
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Yıl</label>
+                      <input 
+                        required 
+                        type="number" 
+                        name="yil" 
+                        className="input" 
+                        value={formData.yil}
+                        onChange={handleChange} 
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Fotoğraf</label>
+                      <div className="space-y-2">
+                        {previewUrl && (
+                          <div className="relative w-full h-24 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600">
+                            <img src={previewUrl} alt="Önizleme" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <label className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                            disabled={uploading}
+                          />
+                          {uploading ? (
+                            <span className="text-sm text-slate-500">Yükleniyor...</span>
+                          ) : (
+                            <>
+                              <Upload size={16} className="text-slate-500" />
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Değiştir</span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="section-title">Kilometre & Yakıt</h3>
-                <div>
-                  <label className="label">Güncel Kilometre</label>
-                  <input 
-                    type="number" 
-                    name="guncel_km" 
-                    className="input" 
-                    value={formData.guncel_km}
-                    onChange={(e) => {
-                      const value = Number(e.target.value);
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        guncel_km: value,
-                        baslangic_km: prev.baslangic_km || value
-                      }));
-                    }} 
-                  />
-                </div>
-                <div>
-                  <label className="label">Yakıt Tipi</label>
-                  <select 
-                    name="yakit_tipi" 
-                    className="input" 
-                    value={formData.yakit_tipi}
-                    onChange={handleChange}
-                  >
-                    <option value="benzin">Benzin</option>
-                    <option value="dizel">Dizel</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Ort. Tüketim (L/100km)</label>
-                  <input 
-                    type="number" 
-                    step="0.1" 
-                    name="ortalama_tuketim_l_100km" 
-                    className="input" 
-                    value={formData.ortalama_tuketim_l_100km}
-                    onChange={handleChange} 
-                  />
-                </div>
-                <div>
-                  <label className="label">Yıllık Ortalama KM</label>
-                  <input 
-                    type="number" 
-                    name="yillik_ortalama_km" 
-                    className="input" 
-                    value={formData.yillik_ortalama_km}
-                    onChange={handleChange} 
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
-            <hr className="border-gray-100 dark:border-gray-700" />
+            {/* Accordion Section 2: 💰 Gider & Finans */}
+            <div className="border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleSection('gider')}
+                className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 flex items-center justify-between transition-colors"
+              >
+                <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm sm:text-base">
+                  💰 Gider & Finans
+                </span>
+                {openSections.gider ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </button>
+              
+              {openSections.gider && (
+                <div className="p-4 bg-white dark:bg-slate-900 space-y-4">
+                  {/* Yakıt Bilgileri */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Yakıt Tipi</label>
+                      <select 
+                        name="yakit_tipi" 
+                        className="input" 
+                        value={formData.yakit_tipi}
+                        onChange={handleChange}
+                      >
+                        <option value="benzin">Benzin</option>
+                        <option value="dizel">Dizel</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">Ort. Tüketim (L/100km)</label>
+                      <input 
+                        type="number" 
+                        step="0.1" 
+                        name="ortalama_tuketim_l_100km" 
+                        className="input" 
+                        value={formData.ortalama_tuketim_l_100km}
+                        onChange={handleChange} 
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Yıllık Ortalama KM</label>
+                      <input 
+                        type="number" 
+                        name="yillik_ortalama_km" 
+                        className="input" 
+                        value={formData.yillik_ortalama_km}
+                        onChange={handleChange} 
+                      />
+                    </div>
+                  </div>
 
-            {/* Servis Takibi */}
-            <h3 className="section-title">Servis Takibi & Bakım</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="label">Son Bakım (KM)</label>
-                <input 
-                  type="number" 
-                  name="son_bakim_km" 
-                  className="input" 
-                  value={formData.son_bakim_km}
-                  onChange={handleChange} 
-                />
-              </div>
-              <div>
-                <label className="label">Bakım Aralığı (KM)</label>
-                <input 
-                  type="number" 
-                  name="periyodik_bakim_km" 
-                  className="input" 
-                  value={formData.periyodik_bakim_km}
-                  onChange={(e) => {
-                    const value = Number(e.target.value);
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      periyodik_bakim_km: value,
-                      bakim_araligi: value 
-                    }));
-                  }} 
-                />
-              </div>
-              <div>
-                <label className="label">Bakım Maliyeti (TL)</label>
-                <input 
-                  type="number" 
-                  name="periyodik_bakim_maliyeti" 
-                  className="input" 
-                  value={formData.periyodik_bakim_maliyeti}
-                  onChange={handleChange} 
-                />
-              </div>
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                    <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Sabit Giderler</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="label">Yıllık Sigorta (TL)</label>
+                        <input 
+                          type="number" 
+                          name="yillik_sigorta" 
+                          className="input" 
+                          value={formData.yillik_sigorta}
+                          onChange={handleChange} 
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Yıllık MTV (TL)</label>
+                        <input 
+                          type="number" 
+                          name="yillik_mtv" 
+                          className="input" 
+                          value={formData.yillik_mtv}
+                          onChange={handleChange} 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                    <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Değer Kaybı (Amortisman)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="label">Şu Anki Değer (TL)</label>
+                        <input 
+                          type="number" 
+                          name="su_anki_fiyat" 
+                          className="input" 
+                          value={formData.su_anki_fiyat}
+                          onChange={handleChange} 
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Gelecek Değer (TL)</label>
+                        <input 
+                          type="number" 
+                          name="gelecek_fiyat" 
+                          className="input" 
+                          value={formData.gelecek_fiyat}
+                          onChange={handleChange} 
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Hedef KM</label>
+                        <input 
+                          type="number" 
+                          name="gelecek_km" 
+                          className="input" 
+                          value={formData.gelecek_km}
+                          onChange={handleChange} 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <hr className="border-gray-100 dark:border-gray-700" />
-
-            {/* Sabit Giderler */}
-            <h3 className="section-title">Sabit Giderler</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="label">Yıllık Sigorta (TL)</label>
-                <input 
-                  type="number" 
-                  name="yillik_sigorta" 
-                  className="input" 
-                  value={formData.yillik_sigorta}
-                  onChange={handleChange} 
-                />
-              </div>
-              <div>
-                <label className="label">Yıllık MTV (TL)</label>
-                <input 
-                  type="number" 
-                  name="yillik_mtv" 
-                  className="input" 
-                  value={formData.yillik_mtv}
-                  onChange={handleChange} 
-                />
-              </div>
+            {/* Accordion Section 3: 🔧 Bakım Ayarları */}
+            <div className="border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleSection('bakim')}
+                className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 flex items-center justify-between transition-colors"
+              >
+                <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm sm:text-base">
+                  🔧 Bakım Ayarları
+                </span>
+                {openSections.bakim ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </button>
+              
+              {openSections.bakim && (
+                <div className="p-4 bg-white dark:bg-slate-900">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="label">Son Bakım (KM)</label>
+                      <input 
+                        type="number" 
+                        name="son_bakim_km" 
+                        className="input" 
+                        value={formData.son_bakim_km}
+                        onChange={handleChange} 
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Bakım Aralığı (KM)</label>
+                      <input 
+                        type="number" 
+                        name="periyodik_bakim_km" 
+                        className="input" 
+                        value={formData.periyodik_bakim_km}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            periyodik_bakim_km: value,
+                            bakim_araligi: value 
+                          }));
+                        }} 
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Bakım Maliyeti (TL)</label>
+                      <input 
+                        type="number" 
+                        name="periyodik_bakim_maliyeti" 
+                        className="input" 
+                        value={formData.periyodik_bakim_maliyeti}
+                        onChange={handleChange} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <hr className="border-gray-100 dark:border-gray-700" />
-
-            {/* Değer Kaybı */}
-            <h3 className="section-title">Değer Kaybı (Amortisman)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="label">Şu Anki Değer (TL)</label>
-                <input 
-                  type="number" 
-                  name="su_anki_fiyat" 
-                  className="input" 
-                  value={formData.su_anki_fiyat}
-                  onChange={handleChange} 
-                />
-              </div>
-              <div>
-                <label className="label">Tahmini Gelecek Değer (TL)</label>
-                <input 
-                  type="number" 
-                  name="gelecek_fiyat" 
-                  className="input" 
-                  value={formData.gelecek_fiyat}
-                  onChange={handleChange} 
-                />
-              </div>
-              <div>
-                <label className="label">Hedef KM</label>
-                <input 
-                  type="number" 
-                  name="gelecek_km" 
-                  className="input" 
-                  value={formData.gelecek_km}
-                  onChange={handleChange} 
-                />
-              </div>
-            </div>
-
-            <div className="pt-3 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-gray-800 py-3 border-t border-gray-100 dark:border-gray-700">
+            {/* Action Buttons */}
+            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-slate-900 pb-2 border-t-2 border-slate-200 dark:border-slate-700 mt-6">
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-5 py-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium text-sm"
+                className="px-6 py-2.5 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-lg transition-colors font-medium text-sm border border-slate-300 dark:border-slate-600"
               >
                 İptal
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-5 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2 shadow-lg shadow-amber-500/30 font-medium transition-all active:scale-95 text-sm disabled:opacity-50"
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-500/30 font-medium transition-all active:scale-95 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save size={16} /> {saving ? "Kaydediliyor..." : "Güncelle"}
               </button>
@@ -366,13 +427,10 @@ export default function EditVehicleModal({ vehicle, onSuccess, onCancel }: EditV
       
       <style jsx>{`
         .label {
-            @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+            @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5;
         }
         .input {
-            @apply w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all text-sm;
-        }
-        .section-title {
-            @apply text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2 border-b border-gray-100 dark:border-gray-700 pb-1;
+            @apply w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-700/50 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm;
         }
       `}</style>
     </div>
