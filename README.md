@@ -104,6 +104,16 @@ AracMaliyetHesaplama/
 | POST | `/upload` | Fotoğraf yükle |
 | GET | `/settings` | Yakıt fiyatlarını getir |
 
+## 🧪 Veri Doğrulama Testleri
+
+Testler, veritabanı yöneticisini taklit ederek API'nin geçersiz girdileri kayıt işleminden önce reddettiğini kontrol eder. Parça güncellemelerinde boş ad, negatif maliyet / kilometre ve sıfır veya negatif parça ömrü reddedilir. Kısmi güncellemelerde gönderilmeyen alanlar korunur.
+
+```bash
+pip install -r requirements.txt
+pip install httpx
+python -m unittest test_validation.py -v
+```
+
 ## 📝 Lisans
 
 MIT
