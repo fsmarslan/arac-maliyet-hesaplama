@@ -34,14 +34,14 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 # --- PYDANTIC MODELLERİ ---
 
 class VehicleBase(BaseModel):
-    marka: str
-    model: str
+    marka: str = Field(..., min_length=1)
+    model: str = Field(..., min_length=1)
     yil: int = Field(..., ge=1900, le=2030)
     fotograf_url: Optional[str] = None
     
     # KM Bilgileri
     baslangic_km: int = 0
-    guncel_km: int = 0
+    guncel_km: int = Field(0, ge=0)
     
     # Yakıt
     yakit_tipi: str = "benzin"  # benzin veya dizel
@@ -306,10 +306,10 @@ def add_component_direct(comp: ComponentCreate):
 
 
 class ComponentUpdate(BaseModel):
-    parca_adi: Optional[str] = None
-    maliyet: Optional[float] = None
-    omur_km: Optional[int] = None
-    degisim_km: Optional[int] = None
+    parca_adi: Optional[str] = Field(None, min_length=1)
+    maliyet: Optional[float] = Field(None, ge=0)
+    omur_km: Optional[int] = Field(None, gt=0, description="Parçanın ömrü 0 olamaz")
+    degisim_km: Optional[int] = Field(None, ge=0)
 
 @app.put("/consumables/{consumable_id}")
 def update_consumable(consumable_id: int, comp: ComponentUpdate):
